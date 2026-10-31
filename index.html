@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATScope — AI Resume & CV Analyzer Dashboard</title>
+    
+    <!-- Custom ATScope Favicon Logo (Vector "AS") -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23CCFF00'/%3E%3Ctext x='50' y='68' font-size='44' font-family='sans-serif' font-weight='900' fill='%230A0A0A' text-anchor='middle'%3EAS%3C/text%3E%3C/svg%3E">
+    
+    <meta property="og:title" content="ATScope AI — Smart CV Analyzer">
+    <meta property="og:description" content="Lexical Vector Comparison & Compatibility Diagnostics Tool.">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* Theme Variables */
+        [data-theme="dark"] {
+            --bg: #0A0A0A; --surface: #141414; --surface-hover: #1F1F1F;
+            --text-main: #FAFAFA; --text-muted: #A3A3A3; --border: #262626;
+            --primary: #CCFF00; --primary-hover: #B3E000; --primary-text: #0A0A0A;
+            --accent-bg: #1A2100; --green-bg: #064E3B; --green-text: #34D399; --green-border: #065F46;
+            --red-bg: #7F1D1D; --red-text: #F87171; --red-border: #991B1B;
+        }
+        [data-theme="light"] {
+            --bg: #F8F9FD; --surface: #FFFFFF; --surface-hover: #F1F5F9;
+            --text-main: #1E1B4B; --text-muted: #64748B; --border: #E2E8F0;
+            --primary: #4861BB; --primary-hover: #3B52A3; --primary-text: #FFFFFF;
+            --accent-bg: #EEF2FF; --green-bg: #ECFDF5; --green-text: #065F46; --green-border: #A7F3D0;
+            --red-bg: #FEF2F2; --red-text: #991B1B; --red-border: #FECACA;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; }
+        body { background-color: var(--bg); color: var(--text-main); font-family: 'Plus Jakarta Sans', sans-serif; display: flex; flex-direction: column; min-height: 100vh; }
+
+        /* Top Navigation */
+        .navbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 40px; display: flex; justify-content: space-between; align-items: center; }
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .logo-box { background: var(--primary); color: var(--primary-text); font-weight: 700; font-size: 16px; padding: 8px 12px; border-radius: 8px; letter-spacing: -0.02em; }
+        .brand-title { font-size: 18px; font-weight: 700; }
+        .brand-subtitle { font-size: 12px; color: var(--text-muted); }
+        .nav-actions { display: flex; gap: 12px; align-items: center; }
+        .nav-btn, .theme-toggle { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--surface-hover); color: var(--text-main); border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        .nav-btn:hover, .theme-toggle:hover { border-color: var(--primary); }
+        .nav-btn svg, .theme-toggle svg { width: 14px; height: 14px; }
+
+        /* FIXED Hover Dropdown CSS */
+        .dropdown { position: relative; display: inline-block; }
+        
+        /* The Invisible Bridge so mouse doesn't fall off */
+        .dropdown::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            height: 12px;
+            background: transparent;
+            display: none;
+            z-index: 99;
+        }
+        .dropdown:hover::after { display: block; }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 4px); /* Snug fit to the bridge */
+            left: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            min-width: 220px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            z-index: 100;
+            padding: 8px 0; /* Clean inner padding */
+        }
+        .dropdown:hover .dropdown-menu { display: block; }
+        .dropdown-item {
+            width: 100%;
+            text-align: left;
+            background: none;
+            border: none;
+            padding: 12px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-main);
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .dropdown-item:hover { background: var(--surface-hover); color: var(--primary); }
+
+        /* Main Dashboard Container */
+        .dashboard { max-width: 1200px; margin: 32px auto; padding: 0 24px; flex: 1; width: 100%; }
+        .error-banner { background: var(--red-bg); border: 1px solid var(--red-border); color: var(--red-text); padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+
+        /* Config Header */
+        .config-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+        .config-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: start; }
+        .input-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 8px; }
+        .input-group input, .input-group textarea { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; color: var(--text-main); background: var(--bg); }
+        .input-group input:focus, .input-group textarea:focus { outline: none; border-color: var(--primary); }
+        .input-group textarea { height: 60px; resize: vertical; }
+
+        /* Main Workspace */
+        .workspace-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+        .panel-header { padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; justify-content: space-between; align-items: center; }
+        .panel-title { font-size: 14px; font-weight: 700; color: var(--text-main); }
+        .panel-hint { font-size: 12px; color: var(--text-muted); }
+
+        .tab-switcher { display: flex; background: var(--bg); padding: 2px; border-radius: 6px; border: 1px solid var(--border); }
+        .tab-btn { background: transparent; border: none; padding: 6px 12px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-radius: 4px; }
+        .tab-btn.active { background: var(--surface); color: var(--text-main); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .tab-content { display: none; padding: 20px; flex: 1; }
+        .tab-content.active { display: block; }
+
+        textarea.main-box { width: 100%; height: 280px; border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; color: var(--text-main); background: var(--bg); resize: vertical; line-height: 1.6; }
+        textarea.main-box:focus { outline: none; border-color: var(--primary); }
+
+        .file-upload-box { border: 2px dashed var(--border); border-radius: 8px; padding: 40px 20px; text-align: center; background: var(--bg); cursor: pointer; height: 280px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .file-upload-box:hover { border-color: var(--primary); background: var(--accent-bg); }
+        .file-upload-box input { display: none; }
+        .file-upload-icon { margin-bottom: 12px; color: var(--text-muted); }
+        .file-upload-title { font-weight: 600; font-size: 14px; color: var(--text-main); margin-bottom: 4px; }
+        .file-upload-sub { font-size: 12px; color: var(--text-muted); }
+
+        .submit-bar { margin-top: 24px; text-align: right; }
+        .btn-analyze { background: var(--primary); color: var(--primary-text); border: none; padding: 14px 32px; font-size: 15px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .btn-analyze:hover { background: var(--primary-hover); }
+
+        /* Report Analytics Section */
+        .report-section { margin-top: 40px; border-top: 1px solid var(--border); padding-top: 32px; }
+        .report-heading { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+        .metrics-grid { display: grid; grid-template-columns: 320px 1fr; gap: 24px; }
+        .score-card, .skill-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+        .score-card { display: flex; flex-direction: column; justify-content: space-between; }
+        .score-number { font-family: 'JetBrains Mono', monospace; font-size: 52px; font-weight: 700; color: var(--primary); line-height: 1; margin: 12px 0; }
+        .progress-track { width: 100%; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); margin: 12px 0; }
+        .progress-fill { height: 100%; background: var(--primary); transition: width 1s ease-out; }
+        .sub-metrics { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px; font-size: 12px; color: var(--text-muted); display: flex; flex-direction: column; gap: 8px; }
+        .sub-metric-row { display: flex; justify-content: space-between; font-weight: 600; }
+        
+        .skills-analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .skill-box h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; display: flex; justify-content: space-between; }
+        .skill-box p { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+        .pills-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+        .pill { font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 6px 12px; border-radius: 6px; font-weight: 500; line-height: 1.4;}
+        .pill-match { background: var(--green-bg); color: var(--green-text); border: 1px solid var(--green-border); }
+        .pill-miss { background: var(--red-bg); color: var(--red-text); border: 1px solid var(--red-border); }
+        .empty-text { font-size: 13px; color: var(--text-muted); font-style: italic; }
+
+        /* Loader Overlay */
+        .loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 10, 10, 0.85); backdrop-filter: blur(8px); z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; }
+        .loader-card { background: var(--surface); border: 1px solid var(--border); padding: 32px 48px; border-radius: 12px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+        .data-equalizer { display: flex; justify-content: center; align-items: center; gap: 6px; height: 30px; margin-bottom: 20px; }
+        .eq-bar { width: 6px; height: 100%; background-color: var(--primary); border-radius: 3px; animation: eqBounce 1s infinite ease-in-out; }
+        .eq-bar:nth-child(1) { animation-delay: -0.3s; }
+        .eq-bar:nth-child(2) { animation-delay: -0.15s; }
+        .eq-bar:nth-child(3) { animation-delay: 0s; }
+        @keyframes eqBounce { 0%, 100% { height: 8px; opacity: 0.5; } 50% { height: 30px; opacity: 1; } }
+        .loader-text { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--text-main); font-weight: 500; }
+
+        /* Footer */
+        .footer { border-top: 1px solid var(--border); background: var(--surface); padding: 24px 0; text-align: center; font-size: 13px; color: var(--text-muted); margin-top: auto; }
+        .footer-brand { font-weight: 700; color: var(--text-main); }
+
+        @media(max-width: 900px) { .config-grid, .workspace-grid, .metrics-grid, .skills-analytics-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <!-- Full Screen Processing Loader -->
+    <div id="loaderOverlay" class="loader-overlay">
+        <div class="loader-card">
+            <div class="data-equalizer">
+                <div class="eq-bar"></div>
+                <div class="eq-bar"></div>
+                <div class="eq-bar"></div>
+            </div>
+            <div id="loaderText" class="loader-text">Initializing AI Engine...</div>
+        </div>
+    </div>
+
+    <nav class="navbar">
+        <div class="brand">
+            <div class="logo-box">AS</div>
+            <div>
+                <div class="brand-title">ATScope AI</div>
+                <div class="brand-subtitle">Smart CV & Job Description Parser</div>
+            </div>
+        </div>
+        <div class="nav-actions">
+            <button type="button" class="theme-toggle" onclick="toggleTheme()">
+                <span id="themeIcon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                </span>
+                <span id="themeText">Light Mode</span>
+            </button>
+            
+            <!-- FIXED Hover Dropdown for Demo Data -->
+            <div class="dropdown">
+                <button type="button" class="nav-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> 
+                    Demo Data ▼
+                </button>
+                <div class="dropdown-menu">
+                    <button type="button" class="dropdown-item" onclick="loadSampleData(1)">1. Real-World Case (Moderate)</button>
+                    <button type="button" class="dropdown-item" onclick="loadSampleData(2)">2. Perfect Match Case (100%)</button>
+                </div>
+            </div>
+
+            <button type="button" class="nav-btn" onclick="clearAllFields()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                Reset
+            </button>
+        </div>
+    </nav>
+
+    <main class="dashboard">
+        {% if error_msg %}
+        <div class="error-banner">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            {{ error_msg }}
+        </div>
+        {% endif %}
+
+        <form id="auditForm" method="POST" enctype="multipart/form-data">
+            
+            <div class="config-card">
+                <div class="config-grid">
+                    <div class="input-group">
+                        <label>Target Job Role (Optional):</label>
+                        <input type="text" name="job_role" placeholder="e.g. AI / Machine Learning Engineer" value="{{ job_role }}">
+                    </div>
+                    <div class="input-group">
+                        <label>Target Job Description Context (Optional):</label>
+                        <textarea id="jdInput" name="jd" placeholder="Paste the broader company description or role summary here...">{{ jd_text }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="workspace-grid">
+                
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Priority Technical Skills & Requirements</span>
+                        <span class="panel-hint">Required</span>
+                    </div>
+                    <div style="padding: 20px;">
+                        <textarea id="reqsInput" class="main-box" name="key_reqs" placeholder="Paste skills, tools, or requirements (comma separated or paragraphs)&#10;&#10;e.g. Python, SQL, Machine Learning, TensorFlow&#10;or&#10;• Write Python code for data preprocessing.&#10;• Develop and test basic machine learning models." required>{{ key_reqs }}</textarea>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Candidate Resume Source</span>
+                        <div class="tab-switcher">
+                            <button type="button" class="tab-btn active" id="tabTextBtn" onclick="switchTab('text')">Paste Text</button>
+                            <button type="button" class="tab-btn" id="tabPdfBtn" onclick="switchTab('pdf')">Upload PDF</button>
+                        </div>
+                    </div>
+
+                    <div id="textTab" class="tab-content active">
+                        <textarea id="resumeInput" class="main-box" name="resume" placeholder="Paste raw resume text, skills, and experience here...">{{ resume_text }}</textarea>
+                    </div>
+
+                    <div id="pdfTab" class="tab-content">
+                        <div class="file-upload-box" onclick="document.getElementById('pdfFile').click()">
+                            <input type="file" id="pdfFile" name="resume_pdf" accept=".pdf" onchange="showFileName(this)">
+                            <div class="file-upload-icon">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            </div>
+                            <div class="file-upload-title" id="fileLabel">Click or drag resume PDF here</div>
+                            <div class="file-upload-sub">Supports standard text-based PDF resumes (.pdf) <br>Max Size: 5MB</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="submit-bar">
+                <button type="submit" class="btn-analyze">Run AI Compatibility Audit &rarr;</button>
+            </div>
+        </form>
+
+        {% if match_score is not none %}
+        <section class="report-section">
+            <div class="report-heading">Audit & Compatibility Telemetry</div>
+
+            <div class="metrics-grid">
+                <div class="score-card">
+                    <div>
+                        <div style="font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Overall Match Score</div>
+                        <div class="score-number">{{ match_score }}%</div>
+                        <div class="progress-track">
+                            <div class="progress-fill" style="width: {{ match_score }}%;"></div>
+                        </div>
+                        <div style="font-size: 14px; font-weight: 700; color: var(--primary);">{{ status_label }}</div>
+                    </div>
+
+                    <div class="sub-metrics">
+                        <div class="sub-metric-row">
+                            <span>Skill Coverage Match:</span>
+                            <span style="font-family: 'JetBrains Mono'; color: var(--text-main);">{{ skill_score_pct }}%</span>
+                        </div>
+                        <div class="sub-metric-row">
+                            <span>TF-IDF Context Score:</span>
+                            <span style="font-family: 'JetBrains Mono'; color: var(--text-main);">{{ context_score_pct }}%</span>
+                        </div>
+                        <div class="sub-metric-row" style="border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px;">
+                            <span>Resume Word Count:</span>
+                            <span style="font-family: 'JetBrains Mono'; color: var(--text-main);">{{ word_count }} Words</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="skills-analytics-grid">
+                    <div class="skill-box">
+                        <h3>
+                            <span>Matched Competencies</span>
+                            <span style="font-family: 'JetBrains Mono'; color: var(--green-text);">{{ found_skills|length }}</span>
+                        </h3>
+                        <p>Overlapping technical keywords in JD and Resume.</p>
+                        <div class="pills-wrap">
+                            {% if found_skills %}
+                                {% for skill in found_skills %}
+                                    <span class="pill pill-match">{{ skill }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="empty-text">No direct keyword overlaps found.</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="skill-box">
+                        <h3>
+                            <span>Identified Gaps</span>
+                            <span style="font-family: 'JetBrains Mono'; color: var(--red-text);">{{ missing_skills|length }}</span>
+                        </h3>
+                        <p>Required target skills missing from candidate resume.</p>
+                        <div class="pills-wrap">
+                            {% if missing_skills %}
+                                {% for skill in missing_skills %}
+                                    <span class="pill pill-miss">{{ skill }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="empty-text">Zero missing skill gaps detected!</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+    </main>
+
+    <footer class="footer">
+        <span class="footer-brand">ATScope</span> &copy; 2026. All rights reserved.<br>
+        <span style="font-size: 11px; margin-top: 6px; display: inline-block;">Lexical Vector Comparison & Compatibility Diagnostics Tool</span>
+    </footer>
+
+    <script>
+        // AI Loader Logic
+        document.getElementById('auditForm').addEventListener('submit', function(e) {
+            const isTextTabActive = document.getElementById('textTab').classList.contains('active');
+            const resumeInput = document.getElementById('resumeInput').value.trim();
+            const pdfInput = document.getElementById('pdfFile').files.length;
+            
+            if (isTextTabActive && resumeInput === "") return; 
+            if (!isTextTabActive && pdfInput === 0) {
+                alert('Please upload a PDF document first.');
+                e.preventDefault();
+                return;
+            }
+
+            e.preventDefault(); 
+            const overlay = document.getElementById('loaderOverlay');
+            const loaderText = document.getElementById('loaderText');
+            overlay.style.display = 'flex'; 
+
+            const processingPhrases = [
+                "Extracting Lexical Tokens...",
+                "Applying TF-IDF Context Weights...",
+                "Mapping Target Skill Vectors...",
+                "Computing Final Alignment Score..."
+            ];
+            
+            let i = 0;
+            loaderText.innerText = processingPhrases[0];
+            
+            const interval = setInterval(() => {
+                i++;
+                if(i < processingPhrases.length) {
+                    loaderText.innerText = processingPhrases[i];
+                }
+            }, 600); 
+
+            setTimeout(() => {
+                clearInterval(interval);
+                this.submit(); 
+            }, 2400);
+        });
+
+        // Theme Logic
+        const sunIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+        const moonIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const themeIcon = document.getElementById('themeIcon');
+            const themeText = document.getElementById('themeText');
+            
+            if (html.getAttribute('data-theme') === 'dark') {
+                html.setAttribute('data-theme', 'light');
+                themeIcon.innerHTML = moonIcon;
+                themeText.innerHTML = 'Dark Mode';
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                themeIcon.innerHTML = sunIcon;
+                themeText.innerHTML = 'Light Mode';
+            }
+        }
+
+        function switchTab(mode) {
+            const textTab = document.getElementById('textTab');
+            const pdfTab = document.getElementById('pdfTab');
+            const textBtn = document.getElementById('tabTextBtn');
+            const pdfBtn = document.getElementById('tabPdfBtn');
+
+            if (mode === 'text') {
+                textTab.classList.add('active');
+                pdfTab.classList.remove('active');
+                textBtn.classList.add('active');
+                pdfBtn.classList.remove('active');
+                document.getElementById('resumeInput').setAttribute('required', 'required');
+            } else {
+                pdfTab.classList.add('active');
+                textTab.classList.remove('active');
+                pdfBtn.classList.add('active');
+                textBtn.classList.remove('active');
+                document.getElementById('resumeInput').removeAttribute('required');
+            }
+        }
+
+        function showFileName(input) {
+            const label = document.getElementById('fileLabel');
+            if (input.files && input.files[0]) {
+                label.innerHTML = "Selected Document: <strong>" + input.files[0].name + "</strong>";
+            }
+        }
+
+        function loadSampleData(type) {
+            if (type === 1) {
+                // Scenario 1: Moderate Match (Targeting ~55% Score)
+                document.querySelector('input[name="job_role"]').value = "AI/ML Engineer";
+                document.getElementById('jdInput').value = "We are looking for a motivated AI/ML Engineer to join our team. Must have strong foundations in cloud infrastructure, deep learning, and containerization using Docker and Kubernetes.";
+                document.getElementById('reqsInput').value = "Python, Machine Learning, Deep Learning, Pandas, NumPy, Scikit-learn, SQL, Docker, AWS, Kubernetes";
+                document.getElementById('resumeInput').value = "B.Tech Computer Science specializing in AI & ML.\nSkills: Python, Machine Learning, SQL, Data Analysis, Pandas, NumPy, Scikit-learn.\nExperience: Developed regression models, handled data cleaning, used Train-Test Splits. Very eager to learn cloud technologies.";
+            } else if (type === 2) {
+                // Scenario 2: Perfect Match (Targeting 100% Score)
+                document.querySelector('input[name="job_role"]').value = "Senior AI/ML Engineer";
+                document.getElementById('jdInput').value = "We are looking for a Senior AI/ML Engineer to deploy scalable machine learning models. You will handle deep learning algorithms using TensorFlow and PyTorch. Experience with Docker, AWS, and Kubernetes is highly required. Must be proficient in Pandas, NumPy, and Scikit-learn.";
+                document.getElementById('reqsInput').value = "Python, Machine Learning, Deep Learning, Pandas, NumPy, Scikit-learn, Docker, AWS, Kubernetes, TensorFlow, PyTorch";
+                document.getElementById('resumeInput').value = "Senior AI/ML Engineer with extensive experience deploying scalable machine learning models. \nI write Python code to handle deep learning algorithms using TensorFlow and PyTorch. \nProficient in Pandas, NumPy, and Scikit-learn. Extensive experience with Docker, AWS, and Kubernetes is highly integrated in my daily work. Looking for a position to leverage my skills in Machine Learning, Deep Learning, TensorFlow, and PyTorch.";
+            }
+            switchTab('text');
+        }
+
+        function clearAllFields() {
+            document.querySelector('input[name="job_role"]').value = "";
+            document.getElementById('jdInput').value = "";
+            document.getElementById('reqsInput').value = "";
+            document.getElementById('resumeInput').value = "";
+            document.getElementById('fileLabel').innerHTML = "Click or drag resume PDF here";
+            document.getElementById('pdfFile').value = "";
+        }
+    </script>
+</body>
+</html>
